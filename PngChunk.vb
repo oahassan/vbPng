@@ -18,8 +18,62 @@ Public Class PngChunk
         Public Const IDAT As String = "IDAT"
         Public Const PLTE As String = "PLTE"
         Public Const IEND As String = "IEND"
-        Public Const TRNS As String = "tRNS"
+        Public Const tRNS As String = "tRNS"
+        Public Const cHRM As String = "cHRM"
+        Public Const gAMA As String = "gAMA"
+        Public Const iCCP As String = "iCCP"
+        Public Const sBIT As String = "sBIT"
+        Public Const sRGB As String = "sRGB"
+        Public Const bKGD As String = "bKGD"
+        Public Const hIST As String = "hIST"
+        Public Const pHYs As String = "pHYs"
+        Public Const sPLT As String = "sPLT"
+        Public Const tIME As String = "tIME"
+        Public Const iTXt As String = "iTXt"
+        Public Const tEXt As String = "tEXt"
+        Public Const zTXt As String = "zTXt"
     End Class
+
+    Friend Shared _KnownChunks As New List(Of String)(New String() { _
+        "IHDR", _
+        "PLTE", _
+        "IDAT", _
+        "IEND", _
+        "cHRM", _
+        "gAMA", _
+        "iCCP", _
+        "sBIT", _
+        "sRGB", _
+        "pHYs", _
+        "sPLT", _
+        "tIME", _
+        "iTXt", _
+        "tEXt", _
+        "zTXt", _
+        "bKGD", _
+        "hIST", _
+        "tRNS" _
+    })
+
+    Friend Shared _PrePLTEChunks As New List(Of String)(New String() { _
+        "cHRM", _
+        "gAMA", _
+        "iCCP", _
+        "sBIT", _
+        "sRGB", _
+        "pHYs", _
+        "sPLT", _
+        "tIME", _
+        "iTXt", _
+        "tEXt", _
+        "zTXt" _
+    })
+
+    Friend Shared _PostPLTEChunks As New List(Of String)(New String() { _
+        "bKGD", _
+        "hIST", _
+        "tRNS" _
+    })
 #End Region
 
 #Region "Constructors"

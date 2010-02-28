@@ -7,78 +7,63 @@ Option Strict On
 Public Class PngColor
 
 #Region "Declarations"
-    Dim _ColorSamples As Byte() = Nothing
-    Dim _AlphaSample As Byte() = Nothing
+    Private _R As Byte() = Nothing
+    Private _G As Byte() = Nothing
+    Private _B As Byte() = Nothing
+    Private _Alpha As Byte() = Nothing
 #End Region
 
 #Region "Constructors"
-    Public Sub New(ByVal colorSamples() As Byte, ByVal alphaSample() As Byte)
-        _ColorSamples = colorSamples
-        _AlphaSample = alphaSample
+    Public Sub New( _
+        ByVal R As Byte(), _
+        ByVal G As Byte(), _
+        ByVal B As Byte(), _
+        ByVal Alpha As Byte() _
+    )
+        _R = R
+        _G = G
+        _B = B
+        _Alpha = Alpha
     End Sub
 #End Region
 
 #Region "Public Properties"
-    Public ReadOnly Property ColorSamples() As Byte()
+    Public ReadOnly Property Samples() As Byte()
         Get
-            Return _ColorSamples
-        End Get
-    End Property
+            Dim sampleList As New List(Of Byte)
+            sampleList.AddRange(_R)
+            sampleList.AddRange(_G)
+            sampleList.AddRange(_B)
 
-    Public ReadOnly Property AlphaSample() As Byte()
-        Get
-            Return _AlphaSample
+            If Alpha Is Nothing = False Then
+                sampleList.AddRange(_Alpha)
+            End If
+
+            Return sampleList.ToArray
         End Get
     End Property
 
     Public ReadOnly Property R() As Byte()
         Get
-            Dim samples As Byte() = Nothing
-
-            Select Case _ColorSamples.Length
-                Case 3
-                    samples = New Byte() {_ColorSamples(0)}
-                Case 6
-                    samples = New Byte() {_ColorSamples(0), _ColorSamples(1)}
-                Case Else
-                    Throw New Exception("Invalid sample size!")
-            End Select
-
-            Return samples
+            Return _R
         End Get
     End Property
 
     Public ReadOnly Property G() As Byte()
         Get
-            Dim samples As Byte() = Nothing
-
-            Select Case _ColorSamples.Length
-                Case 3
-                    samples = New Byte() {_ColorSamples(1)}
-                Case 6
-                    samples = New Byte() {_ColorSamples(2), _ColorSamples(3)}
-                Case Else
-                    Throw New Exception("Invalid sample size!")
-            End Select
-
-            Return samples
+            Return _G
         End Get
     End Property
 
     Public ReadOnly Property B() As Byte()
         Get
-            Dim samples As Byte() = Nothing
+            Return _B
+        End Get
+    End Property
 
-            Select Case _ColorSamples.Length
-                Case 3
-                    samples = New Byte() {_ColorSamples(2)}
-                Case 6
-                    samples = New Byte() {_ColorSamples(4), _ColorSamples(5)}
-                Case Else
-                    Throw New Exception("Invalid sample size!")
-            End Select
-
-            Return samples
+    Public ReadOnly Property Alpha() As Byte()
+        Get
+            Return _Alpha
         End Get
     End Property
 #End Region
@@ -87,19 +72,21 @@ Public Class PngColor
     Public Function Clone() As PngColor
         Dim alpha As Byte() = Nothing
 
-        If _AlphaSample Is Nothing Then
-
-        Else
-            alpha = CType(_AlphaSample.Clone, Byte())
+        If alpha Is Nothing = False Then
+            alpha = CType(_Alpha.Clone, Byte())
         End If
 
-        Return New PngColor(CType(_ColorSamples.Clone, Byte()), alpha)
+        Dim R As Byte() = CType(_R.Clone, Byte())
+        Dim G As Byte() = CType(_G.Clone, Byte())
+        Dim B As Byte() = CType(_B.Clone, Byte())
+
+        Return New PngColor(R, G, B, alpha)
     End Function
 
     Public Shared Function compare(ByVal color1 As PngColor, ByVal color2 As PngColor) As Boolean
         Dim indicator As Boolean = False
 
-        If CompareAlphaSamples(color1, color2) _
+        If CompareAlphas(color1, color2) _
         AndAlso CompareColorSamples(color1, color2) Then
             indicator = True
         End If
@@ -111,39 +98,57 @@ Public Class PngColor
         ByVal color1 As PngColor, _
         ByVal color2 As PngColor _
     ) As Boolean
-        Return PngLibUtil.compareByteArrays(color1.ColorSamples, color2.ColorSamples)
+        Return PngLibUtil.compareByteArrays(color1.R, color2.R) _
+        AndAlso PngLibUtil.compareByteArrays(color1.G, color2.G) _
+        AndAlso PngLibUtil.compareByteArrays(color1.B, color2.B)
     End Function
 
-    Public Shared Function CompareAlphaSamples( _
+    Public Shared Function CompareAlphas( _
         ByVal color1 As PngColor, _
         ByVal color2 As PngColor _
     ) As Boolean
-        Return PngLibUtil.compareByteArrays(color1.AlphaSample, color2.AlphaSample)
+        Return PngLibUtil.compareByteArrays(color1.Alpha, color2.Alpha)
     End Function
 
     Public Function IsOpaque() As Boolean
         Dim indicator As Boolean = False
 
-        If _AlphaSample Is Nothing Then
+        If Me.Alpha Is Nothing Then
             indicator = True
-        ElseIf _AlphaSample.Length = 1 Then
-            If _AlphaSample(0) = 255 Then
+        ElseIf Me.Alpha.Length = 1 Then
+            If Me.Alpha(0) = 255 Then
                 indicator = True
             End If
-        ElseIf _AlphaSample.Length = 2 Then
-            If _AlphaSample(0) = 255 _
-            AndAlso AlphaSample(1) = 255 Then
+        ElseIf Me.Alpha.Length = 2 Then
+            If Me.Alpha(0) = 255 _
+            AndAlso Me.Alpha(1) = 255 Then
                 indicator = True
             End If
         End If
 
         Return indicator
     End Function
-#End Region
 
-#Region "Friend Functions"
-    Friend Sub setAlpha(ByVal alpha() As Byte)
-        _AlphaSample = alpha
+    Public Sub setAlpha(ByVal alpha() As Byte)
+        Dim sampleCount As Integer = R.Length
+
+        Select Case sampleCount
+            Case 1
+                If alpha.Length <> 1 Then
+                    Throw New ArgumentOutOfRangeException("Invalid alpha sample")
+                End If
+
+            Case 2
+                If alpha.Length <> 2 Then
+                    Throw New ArgumentOutOfRangeException("Invalid alpha sample")
+                End If
+
+            Case Else
+                Throw New ArgumentOutOfRangeException("Invalid Sample Count")
+        End Select
+
+        _Alpha = alpha
     End Sub
+
 #End Region
 End Class

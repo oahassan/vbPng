@@ -85,7 +85,6 @@ Public Class PngReader
             dataBytes.WriteByte(byteBuffer(0))
         Next
 
-        'TODO - CRC calculation
         'Set position to beginning to calculate CRC over chunk name and data
         crcInput.Seek(0, SeekOrigin.Begin)
 

@@ -91,11 +91,11 @@ Public Class CRCGenerator
         End If
 
         Dim byteBuffer(0) As Byte
-        Dim nbrRead As Integer = buffer.Read(byteBuffer, 0, 1)
+        Dim numberRead As Integer = buffer.Read(byteBuffer, 0, 1)
 
-        While nbrRead > 0
+        While numberRead > 0
             c = crcTbl((c Xor byteBuffer(0)) And &HFF) Xor (c >> 8)
-            nbrRead = buffer.Read(byteBuffer, 0, 1)
+            numberRead = buffer.Read(byteBuffer, 0, 1)
         End While
 
         Return c

@@ -38,7 +38,7 @@ Public Class zStreamReader
 
         dataStream.Seek(0, SeekOrigin.Begin)
 
-        Dim decompressedStream As New System.IO.Compression.DeflateStream(dataStream, Compression.CompressionMode.Decompress)
+        Dim decompressedStream As New System.IO.Compression.DeflateStream(dataStream, Compression.CompressionMode.Decompress, True)
         Dim decompressedData As New MemoryStream
 
         Dim buffer As Byte() = New Byte(32768) {}
@@ -50,9 +50,9 @@ Public Class zStreamReader
             numRead = decompressedStream.Read(buffer, 0, buffer.Length)
         Loop
 
+        decompressedStream.Close()
+
         decompressedData.Seek(0, SeekOrigin.Begin)
-
-
 
         Dim adlerBytes(3) As Byte
         zStream.Read(adlerBytes, 0, 4)
@@ -64,39 +64,6 @@ Public Class zStreamReader
         End If
 
         Return decompressedData
-    End Function
-
-    Private Function ReadDeflateStreamLength(ByVal zStream As MemoryStream) As Integer
-        Dim buffer(2) As Byte
-
-        zStream.Read(buffer, 0, 2)
-
-    End Function
-
-    Private Function Decompress( _
-        ByVal zStream As MemoryStream, _
-        ByVal startPos As Integer, _
-        ByVal length As Integer _
-    ) As Byte()
-        Dim buffer(length) As Byte
-        Dim reader As New Compression.DeflateStream(zStream, _
-                                                    Compression.CompressionMode.Decompress)
-        reader.Read(buffer, startPos, length)
-
-        Return buffer
-    End Function
-
-    Private Function readStream( _
-        ByVal zStream As FileStream, _
-        ByVal startPos As Integer, _
-        ByVal length As Integer _
-    ) As Byte()
-        Dim reader As New BinaryReader(zStream)
-        Dim buffer(length) As Byte
-
-        reader.Read(buffer, startPos, length)
-
-        Return buffer
     End Function
 
 End Class

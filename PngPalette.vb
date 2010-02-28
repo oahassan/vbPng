@@ -11,9 +11,16 @@
 
     End Sub
 
-    Public Sub New(ByRef scanLines As List(Of PngScanline))
-        For Each line As PngScanline In scanLines
-            For Each pixel As PngPixel In line.Pixels
+    Public Sub New( _
+        ByRef scanLines As List(Of PngScanline), _
+        ByVal setPixelColors As Boolean _
+    )
+        For lineIndex As Integer = 0 To scanLines.Count - 1
+            Dim line As PngScanline = scanLines(lineIndex)
+
+            For pixelIndex As Integer = 0 To line.Pixels.Count - 1
+                Dim pixel As PngPixel = line.Pixels(pixelIndex)
+
                 Dim colorEntry As Integer = Me.hasEntry(pixel.Color)
 
                 If colorEntry = -1 Then
@@ -23,9 +30,13 @@
                         _TransparentEntryCount += 1
                     End If
 
-                    pixel.ReplaceColorWithPaletteEntry(Me._Entries.Count - 1)
+                    If setPixelColors Then
+                        pixel.ReplaceColorWithPaletteEntry(Me._Entries.Count - 1)
+                    End If
                 Else
-                    pixel.ReplaceColorWithPaletteEntry(colorEntry)
+                    If setPixelColors Then
+                        pixel.ReplaceColorWithPaletteEntry(colorEntry)
+                    End If
                 End If
             Next
         Next
@@ -71,6 +82,9 @@
         If opaqueIndicator = False _
         AndAlso Entries(index).IsOpaque Then
             _TransparentEntryCount += 1
+        ElseIf opaqueIndicator _
+        AndAlso Entries(index).IsOpaque = False Then
+            _TransparentEntryCount -= 1
         End If
 
         _Entries(index).setAlpha(alpha)
@@ -148,12 +162,16 @@
 
 #Region "Private Functions"
     Private Function readPaletteEntry(ByVal paletteData As IO.MemoryStream) As PngColor
-        Dim sampleBuffer(2) As Byte
         Dim paletteEntry As PngColor = Nothing
+        Dim sampleBuffer(2) As Byte
         Dim bytesRead As Integer = paletteData.Read(sampleBuffer, 0, sampleBuffer.Length)
 
         If bytesRead = sampleBuffer.Length Then
-            paletteEntry = New PngColor(sampleBuffer, Nothing)
+            Dim r As Byte() = New Byte() {sampleBuffer(0)}
+            Dim g As Byte() = New Byte() {sampleBuffer(1)}
+            Dim b As Byte() = New Byte() {sampleBuffer(2)}
+
+            paletteEntry = New PngColor(r, g, b, Nothing)
         End If
 
         Return paletteEntry

@@ -26,13 +26,13 @@ Public Class Adler32
         Dim s2 As UInteger = (adler >> 16) And &HFFFFUI
 
         Dim byteBuffer(0) As Byte
-        Dim nbrRead As Integer = buffer.Read(byteBuffer, 0, 1)
+        Dim numberRead As Integer = buffer.Read(byteBuffer, 0, 1)
 
-        While nbrRead <> 0
+        While numberRead <> 0
             'Cast in modular arithmetic to avoid overflows
             s1 = CUInt((CLng(s1) + CLng(byteBuffer(0))) Mod BASE)
             s2 = CUInt((CLng(s2) + CLng(s1)) Mod BASE)
-            nbrRead = buffer.Read(byteBuffer, 0, 1)
+            numberRead = buffer.Read(byteBuffer, 0, 1)
         End While
 
         Return (s2 << 16) + s1
