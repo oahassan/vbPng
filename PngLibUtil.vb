@@ -1,7 +1,7 @@
 ﻿Option Strict On
 Option Explicit On
 
-Public Class PngLibUtil
+Friend Class PngLibUtil
     Public Shared Sub writePngImgToFile( _
         ByVal filePath As String, _
         ByVal png As PngImage _

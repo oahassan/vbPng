@@ -2,7 +2,7 @@
 
 Imports System.IO
 
-Public Class CRCGenerator
+Friend Class CRCGenerator
     Private Shared crcTbl As Dictionary(Of Byte, UInteger) = Nothing
     Private Shared crcTblLiteral() As UInteger = { _
     &H0UI, &H77073096UI, &HEE0E612CUI, &H990951BAUI, &H76DC419UI, _

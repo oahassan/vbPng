@@ -7,7 +7,7 @@ Imports System.IO
 ''' Ported from RFC 1591 sample code
 ''' </summary>
 ''' <remarks></remarks>
-Public Class Adler32
+Friend Class Adler32
     Private Const BASE As UShort = 65521 '/* largest prime smaller than 65536 */
     '/*
     'Update a running Adler-32 checksum with the bytes buf[0..len-1]

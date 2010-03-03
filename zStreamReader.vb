@@ -3,7 +3,7 @@ Option Explicit
 
 Imports System.IO
 
-Public Class zStreamReader
+Friend Class zStreamReader
 
     Private Const MaxWindowSize As Byte = &H7
 
@@ -31,7 +31,7 @@ Public Class zStreamReader
         'Data stream length is stream length minus 2 bytes for CMF and FLGs and minus
         'another 4 bytes for the checksum at the end
         For i As Long = 1 To zStream.Length - 6
-            Dim bufferBytes(0) As byte
+            Dim bufferBytes(0) As Byte
             zStream.Read(bufferBytes, 0, 1)
             dataStream.Write(bufferBytes, 0, 1)
         Next
