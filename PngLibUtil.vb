@@ -2,14 +2,15 @@
 Option Explicit On
 
 Friend Class PngLibUtil
-    Public Shared Sub writePngImgToFile( _
-        ByVal filePath As String, _
-        ByVal png As PngImage _
-    )
+#Region "Debugging Functions"
+    Friend Shared Sub writePngImgToFile( _
+            ByVal filePath As String, _
+            ByVal png As PngImage _
+        )
         Dim writer As New IO.StreamWriter(filePath)
 
         For Each scanline As PngScanline In png.Scanlines
-            writer.Write(scanline.Filter(0))
+            writer.Write(New Byte() {CByte(scanline.Filter)})
 
             writer.Write(Space(1))
 
@@ -28,6 +29,171 @@ Friend Class PngLibUtil
 
         writer.Close()
     End Sub
+
+    Public Shared Sub writeBytesToConsole(ByVal stream As IO.Stream)
+        Dim position As Long = stream.Position
+
+        stream.Seek(0, IO.SeekOrigin.Begin)
+
+        Dim buffer As Byte() = New Byte(4096) {}
+        Dim numRead As Integer
+        numRead = stream.Read(buffer, 0, buffer.Length)
+
+        Do While numRead <> 0
+            For i = 0 To numRead - 1
+                Console.Write(Convert.ToString(buffer(i), 2) + Space(1))
+            Next
+
+            numRead = stream.Read(buffer, 0, buffer.Length)
+        Loop
+
+        'Return stream to original position
+        stream.Seek(position, IO.SeekOrigin.Begin)
+    End Sub
+
+    Public Shared Sub writeBytesToFile(ByVal stream As IO.Stream, ByVal filePath As String, ByVal scanlineByteLength As Integer)
+        Dim outputFile As New IO.StreamWriter(filePath, False)
+
+        Dim position As Long = stream.Position
+        Dim buffer As Byte() = New Byte(4096) {}
+        Dim numRead As Integer
+        numRead = stream.Read(buffer, 0, buffer.Length)
+        Dim writeCount As Integer = 0
+
+        Do While numRead <> 0
+            For i = 0 To numRead - 1
+                If buffer(i) < &H10 Then
+                    outputFile.Write("0" & String.Format("{00:x}", buffer(i)))
+                Else
+                    outputFile.Write(String.Format("{00:x}", buffer(i)))
+                End If
+
+                writeCount += 1
+
+                outputFile.Write(Space(1))
+
+                If writeCount Mod (scanlineByteLength) = 0 Then
+                    outputFile.WriteLine()
+                End If
+            Next
+
+            numRead = stream.Read(buffer, 0, buffer.Length)
+        Loop
+
+        'Return stream to original position
+        stream.Seek(position, IO.SeekOrigin.Begin)
+        outputFile.Close()
+    End Sub
+
+    Public Shared Sub writeScanlineBytesToFile( _
+        ByVal scanlines As List(Of List(Of Byte())), _
+        ByVal filePath As String, _
+        ByVal scanlineByteLength As Integer)
+        Dim outputFile As New IO.StreamWriter(filePath, False)
+
+        For Each scanline As List(Of Byte()) In scanlines
+            For Each bytes As Byte() In scanline
+                For Each lineByte As Byte In bytes
+                    If lineByte < &H10 Then
+                        outputFile.Write("0" & String.Format("{00:x}", lineByte))
+                    Else
+                        outputFile.Write(String.Format("{00:x}", lineByte))
+                    End If
+                    outputFile.Write(Space(1))
+                Next
+            Next
+            outputFile.WriteLine()
+        Next
+
+        outputFile.Close()
+    End Sub
+
+    Public Shared Function countNonOpaqueEntries(ByVal palette As PngPalette) As Integer
+        Dim count As Integer = 0
+
+        For Each entry As PngColor In palette.Entries
+            If entry.Alpha Is Nothing Then
+                'nothing
+            Else
+                If entry.Alpha(0) <> 255 Then
+                    count += 1
+                End If
+            End If
+        Next
+
+        Return count
+    End Function
+
+    Public Shared Function countColorTypePngs(ByVal pngs As List(Of PngImage)) As Integer
+        Dim counter As Integer = 0
+
+        For Each png As PngImage In pngs
+            If png.ColorType = PngImage.colorTypes.INDEXED Then
+                counter += 1
+            End If
+        Next
+
+        Return counter
+    End Function
+
+    Public Shared Function countNonGreyscaleEntries(ByVal palette As PngPalette) As Integer
+        Dim count As Integer = 0
+
+        For Each entry As PngColor In palette.Entries
+            Dim differenceIndicator As Boolean = False
+
+            For sampleIndex = 0 To entry.B.Length - 1
+                If entry.B(sampleIndex) <> entry.R(sampleIndex) _
+                Or entry.B(sampleIndex) <> entry.G(sampleIndex) Then
+                    differenceIndicator = True
+                    Exit For
+                End If
+            Next
+
+            If differenceIndicator = True Then
+                count += 1
+            End If
+        Next
+
+        Return count
+    End Function
+
+    Public Shared Function countRedundantEntries(ByVal palette As PngPalette) As Integer
+        Dim count As Integer = 0
+
+        Dim countedColors As New List(Of PngColor)
+
+        For entryIndex As Integer = 0 To palette.Entries.Length - 1
+            If listContainsColor(countedColors, palette.Entries(entryIndex)) Then
+                'nothing
+            Else
+                For nextEntryIndex As Integer = entryIndex + 1 To palette.Entries.Length - 1
+                    If PngColor.Compare(palette.Entries(entryIndex), palette.Entries(nextEntryIndex)) Then
+                        count += 1
+                    End If
+                Next
+            End If
+
+            countedColors.Add(palette.Entries(entryIndex))
+        Next
+
+        Return count
+    End Function
+
+    Private Shared Function listContainsColor(ByVal list As List(Of PngColor), ByVal testColor As PngColor) As Boolean
+        Dim indicator As Boolean = False
+
+        For Each color As PngColor In list
+            If PngColor.Compare(color, testColor) Then
+                indicator = True
+                Exit For
+            End If
+        Next
+
+        Return indicator
+    End Function
+#End Region
+
 
     Friend Shared Function compareByteArrays(ByVal array1 As Byte(), ByVal array2 As Byte()) As Boolean
         Dim indicator As Boolean = True
@@ -48,12 +214,12 @@ Friend Class PngLibUtil
         Return indicator
     End Function
 
-    Friend Shared Function byteArrayToLong(ByVal bytes As Byte()) As Long
-        Dim rtnVal As Long = 0
+    Friend Shared Function byteArrayToLong(ByVal bytes As Byte()) As UInteger
+        Dim rtnVal As UInteger = 0
         Dim binaryPlace As Long = CLng(Math.Pow(2, 8 * (bytes.Length - 1)))
 
         For idx As Integer = 0 To bytes.Length - 1
-            rtnVal += binaryPlace * bytes(idx)
+            rtnVal += CUInt(binaryPlace * bytes(idx))
             binaryPlace >>= 8
         Next
 
@@ -451,166 +617,5 @@ Friend Class PngLibUtil
     End Function
 #End Region
 
-    Public Shared Sub writeBytesToConsole(ByVal stream As IO.Stream)
-        Dim position As Long = stream.Position
-
-        stream.Seek(0, IO.SeekOrigin.Begin)
-
-        Dim buffer As Byte() = New Byte(4096) {}
-        Dim numRead As Integer
-        numRead = stream.Read(buffer, 0, buffer.Length)
-
-        Do While numRead <> 0
-            For i = 0 To numRead - 1
-                Console.Write(Convert.ToString(buffer(i), 2) + Space(1))
-            Next
-
-            numRead = stream.Read(buffer, 0, buffer.Length)
-        Loop
-
-        'Return stream to original position
-        stream.Seek(position, IO.SeekOrigin.Begin)
-    End Sub
-
-    Public Shared Sub writeBytesToFile(ByVal stream As IO.Stream, ByVal filePath As String, ByVal scanlineByteLength As Integer)
-        Dim outputFile As New IO.StreamWriter(filePath, False)
-
-        Dim position As Long = stream.Position
-        Dim buffer As Byte() = New Byte(4096) {}
-        Dim numRead As Integer
-        numRead = stream.Read(buffer, 0, buffer.Length)
-        Dim writeCount As Integer = 0
-
-        Do While numRead <> 0
-            For i = 0 To numRead - 1
-                If buffer(i) < &H10 Then
-                    outputFile.Write("0" & String.Format("{00:x}", buffer(i)))
-                Else
-                    outputFile.Write(String.Format("{00:x}", buffer(i)))
-                End If
-
-                writeCount += 1
-
-                outputFile.Write(Space(1))
-
-                If writeCount Mod (scanlineByteLength) = 0 Then
-                    outputFile.WriteLine()
-                End If
-            Next
-
-            numRead = stream.Read(buffer, 0, buffer.Length)
-        Loop
-
-        'Return stream to original position
-        stream.Seek(position, IO.SeekOrigin.Begin)
-        outputFile.Close()
-    End Sub
-
-    Public Shared Sub writeScanlineBytesToFile( _
-        ByVal scanlines As List(Of List(Of Byte())), _
-        ByVal filePath As String, _
-        ByVal scanlineByteLength As Integer)
-        Dim outputFile As New IO.StreamWriter(filePath, False)
-
-        For Each scanline As List(Of Byte()) In scanlines
-            For Each bytes As Byte() In scanline
-                For Each lineByte As Byte In bytes
-                    If lineByte < &H10 Then
-                        outputFile.Write("0" & String.Format("{00:x}", lineByte))
-                    Else
-                        outputFile.Write(String.Format("{00:x}", lineByte))
-                    End If
-                    outputFile.Write(Space(1))
-                Next
-            Next
-            outputFile.WriteLine()
-        Next
-
-        outputFile.Close()
-    End Sub
-
-    Public Shared Function countNonOpaqueEntries(ByVal palette As PngPalette) As Integer
-        Dim count As Integer = 0
-
-        For Each entry As PngColor In palette.Entries
-            If entry.Alpha Is Nothing Then
-                'nothing
-            Else
-                If entry.Alpha(0) <> 255 Then
-                    count += 1
-                End If
-            End If
-        Next
-
-        Return count
-    End Function
-
-    Public Shared Function countColorTypePngs(ByVal pngs As List(Of PngImage)) As Integer
-        Dim counter As Integer = 0
-
-        For Each png As PngImage In pngs
-            If png.ColorType = PngImage.colorTypes.INDEXED Then
-                counter += 1
-            End If
-        Next
-
-        Return counter
-    End Function
-
-    Public Shared Function countNonGreyscaleEntries(ByVal palette As PngPalette) As Integer
-        Dim count As Integer = 0
-
-        For Each entry As PngColor In palette.Entries
-            Dim differenceIndicator As Boolean = False
-
-            For sampleIndex = 0 To entry.B.Length - 1
-                If entry.B(sampleIndex) <> entry.R(sampleIndex) _
-                Or entry.B(sampleIndex) <> entry.G(sampleIndex) Then
-                    differenceIndicator = True
-                    Exit For
-                End If
-            Next
-
-            If differenceIndicator = True Then
-                count += 1
-            End If
-        Next
-
-        Return count
-    End Function
-
-    Public Shared Function countRedundantEntries(ByVal palette As PngPalette) As Integer
-        Dim count As Integer = 0
-
-        Dim countedColors As New List(Of PngColor)
-
-        For entryIndex As Integer = 0 To palette.Entries.Length - 1
-            If listContainsColor(countedColors, palette.Entries(entryIndex)) Then
-                'nothing
-            Else
-                For nextEntryIndex As Integer = entryIndex + 1 To palette.Entries.Length - 1
-                    If PngColor.compare(palette.Entries(entryIndex), palette.Entries(nextEntryIndex)) Then
-                        count += 1
-                    End If
-                Next
-            End If
-
-            countedColors.Add(palette.Entries(entryIndex))
-        Next
-
-        Return count
-    End Function
-
-    Private Shared Function listContainsColor(ByVal list As List(Of PngColor), ByVal testColor As PngColor) As Boolean
-        Dim indicator As Boolean = False
-
-        For Each color As PngColor In list
-            If PngColor.compare(color, testColor) Then
-                indicator = True
-                Exit For
-            End If
-        Next
-
-        Return indicator
-    End Function
+    
 End Class

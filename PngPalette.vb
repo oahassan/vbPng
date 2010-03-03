@@ -3,16 +3,42 @@
     Private _Entries As New List(Of PngColor)
     Private _TransparentEntryCount As Integer = 0
 
+    ''' <summary>
+    ''' Delegate for comparison functions
+    ''' </summary>
+    ''' <param name="color1">
+    ''' first color to compare
+    ''' </param>
+    ''' <param name="color2">
+    ''' second color to compare
+    ''' </param>
+    ''' <returns>
+    ''' Boolean value indicating equivalency of the two colors
+    ''' </returns>
     Public Delegate Function colorComparer(ByVal color1 As PngColor, ByVal color2 As PngColor) As Boolean
 #End Region
 
 #Region "Constructors"
+    ''' <summary>
+    ''' Instantiates a new PngPalette
+    ''' </summary>
     Public Sub New()
 
     End Sub
 
+    ''' <summary>
+    ''' Instantiates a new PngPalette and populates it with the colors in the scanlines
+    ''' of a png.
+    ''' </summary>
+    ''' <param name="scanLines">
+    ''' Scanlines to create palette entries
+    ''' </param>
+    ''' <param name="setPixelColors">
+    ''' Indicates whether to replace a PngPixel's color with its palette entry index
+    ''' </param>
+    ''' <remarks></remarks>
     Public Sub New( _
-        ByRef scanLines As List(Of PngScanline), _
+        ByVal scanLines As List(Of PngScanline), _
         ByVal setPixelColors As Boolean _
     )
         For lineIndex As Integer = 0 To scanLines.Count - 1
@@ -42,7 +68,7 @@
         Next
     End Sub
 
-    Public Sub New(ByVal paletteChunk As PngChunk)
+    Friend Sub New(ByVal paletteChunk As PngChunk)
         Dim paletteEntry As PngColor = readPaletteEntry(paletteChunk.Data)
 
         Do Until paletteEntry Is Nothing
@@ -69,27 +95,12 @@
 #End Region
 
 #Region "Public Functions"
-    Public Sub setEntryAlpha(ByVal index As Integer, ByVal alpha() As Byte)
-        Dim opaqueIndicator As Boolean = True
-
-        For Each sampleByte As Byte In alpha
-            If sampleByte <> 255 Then
-                opaqueIndicator = False
-                Exit For
-            End If
-        Next
-
-        If opaqueIndicator = False _
-        AndAlso Entries(index).IsOpaque Then
-            _TransparentEntryCount += 1
-        ElseIf opaqueIndicator _
-        AndAlso Entries(index).IsOpaque = False Then
-            _TransparentEntryCount -= 1
-        End If
-
-        _Entries(index).setAlpha(alpha)
-    End Sub
-
+    ''' <summary>
+    ''' Adds a PngColor to the entries in this PngPalette
+    ''' </summary>
+    ''' <param name="color">
+    ''' PngColor to add
+    ''' </param>
     Public Sub addEntry(ByVal color As PngColor)
         If color Is Nothing Then
             Throw New ArgumentNullException("color")
@@ -103,6 +114,18 @@
 
     End Sub
 
+    ''' <summary>
+    ''' Returns whether a PngColor exists in this PngPalette
+    ''' </summary>
+    ''' <param name="color">
+    ''' PngColor to search for
+    ''' </param>
+    ''' <param name="colorComparer">
+    ''' Optionally takes in a comparer to customize what colors match
+    ''' </param>
+    ''' <returns>
+    ''' A boolean indicating if this PngPalette contains the given PngColor
+    ''' </returns>
     Public Function hasEntry( _
         ByVal color As PngColor, _
         Optional ByVal colorComparer As colorComparer = Nothing _
@@ -112,7 +135,7 @@
         End If
 
         If colorComparer Is Nothing Then
-            colorComparer = AddressOf PngColor.compare
+            colorComparer = AddressOf PngColor.Compare
         End If
 
         Dim entryPosition As Integer = -1
@@ -128,14 +151,16 @@
 
         Return entryPosition
     End Function
+#End Region
 
+#Region "Friend Functions"
     ''' <summary>
     ''' removes entries beyond the last non-opaque entry
     ''' </summary>
     ''' <remarks>
     ''' preprocessing for creating the transparency chunk
     ''' </remarks>
-    Public Sub truncateEntries()
+    Friend Sub truncateEntries()
         Dim truncatedEntries As New List(Of PngColor)
 
         Dim lastTransparentEntryIndex As Integer = -1

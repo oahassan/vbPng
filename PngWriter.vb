@@ -3,9 +3,20 @@ Option Strict On
 
 Imports System.IO
 
+''' <summary>
+''' Writes PngImages to Png files
+''' </summary>
 Public Class PngWriter
-
-    Public Sub Write( _
+    ''' <summary>
+    ''' Writes a PNG file for a given PngImage
+    ''' </summary>
+    ''' <param name="filePath">
+    ''' Path to write png file to
+    ''' </param>
+    ''' <param name="png">
+    ''' PngImage to write to path
+    ''' </param>
+    Public Sub WritePng( _
         ByVal filePath As String, _
         ByVal png As PngImage _
     )
@@ -393,7 +404,7 @@ Public Class PngWriter
         While scanlineIndex < png.Height
             Dim pixelIndex As Integer = startPixelIndex
 
-            Dim filter() As Byte = {0}
+            Dim filter As PngScanline.FilterTypes = PngScanline.FilterTypes.NoFilter
             Dim pixels As New List(Of PngPixel)
 
             While pixelIndex < png.Width
@@ -422,7 +433,7 @@ Public Class PngWriter
             Dim scanline As PngScanline = scanlines(scanlineIndex)
 
             Dim scanlineBytes As New List(Of Byte())
-            scanlineBytes.Add(scanline.Filter)
+            scanlineBytes.Add(New Byte() {CByte(scanline.Filter)})
             'scanlineBytes.Add(New Byte() {0})
 
             'Used for bit depths 1, 2 and 4
@@ -455,7 +466,7 @@ Public Class PngWriter
             End If
 
             Dim filteredBytes As New List(Of Byte())
-            filteredBytes.Add(scanline.Filter)
+            filteredBytes.Add(New Byte() {CByte(scanline.Filter)})
             filteredBytes.AddRange(PngLibUtil.ApplyFilter(scanlineBytes, previousScanlineBytes))
 
             For bytesIndex As Integer = 0 To filteredBytes.Count - 1

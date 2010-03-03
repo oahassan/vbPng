@@ -4,9 +4,11 @@ Option Explicit On
 Imports System.IO
 
 ''' <summary>
-''' Ported from RFC 1591 sample code
+''' Creates the adler check sum for the zlib stream
 ''' </summary>
-''' <remarks></remarks>
+''' <remarks>
+''' Ported from RFC 1591 sample code
+''' </remarks>
 Friend Class Adler32
     Private Const BASE As UShort = 65521 '/* largest prime smaller than 65536 */
     '/*

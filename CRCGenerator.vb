@@ -2,6 +2,12 @@
 
 Imports System.IO
 
+''' <summary>
+''' Calculates the CRC value for a png chunk
+''' </summary>
+''' <remarks>
+''' Ported from the Png 1.2 specification
+''' </remarks>
 Friend Class CRCGenerator
     Private Shared crcTbl As Dictionary(Of Byte, UInteger) = Nothing
     Private Shared crcTblLiteral() As UInteger = { _
@@ -94,13 +100,20 @@ Friend Class CRCGenerator
         Dim numberRead As Integer = buffer.Read(byteBuffer, 0, 1)
 
         While numberRead > 0
-            c = crcTbl((c Xor byteBuffer(0)) And &HFF) Xor (c >> 8)
+            c = crcTbl(CByte((c Xor byteBuffer(0)) And &HFF)) Xor (c >> 8)
             numberRead = buffer.Read(byteBuffer, 0, 1)
         End While
 
         Return c
     End Function
 
+    ''' <summary>
+    ''' Calculates the cylic redundancy check (CRC) for a chunk.  The buffer should start 
+    ''' with the chunk name to calculate the correct value.
+    ''' </summary>
+    ''' <param name="buffer">
+    ''' chunk name and chunk data
+    ''' </param>
     Public Shared Function crc(ByRef buffer As MemoryStream) As UInteger
 
         Return update_crc(&HFFFFFFFFUI, buffer) Xor &HFFFFFFFFUI

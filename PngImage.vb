@@ -3,18 +3,55 @@ Option Explicit On
 
 Imports System.IO
 
+''' <summary>
+''' Encapsulates a png image
+''' </summary>
 Public Class PngImage
 
-    Private mScanlineBytes As New List(Of List(Of Byte()))
-
 #Region "Declarations"
-    Public Class colorTypes
-        Public Const GREYSCALE As Integer = 0
-        Public Const TRUECOLOR As Integer = 2
-        Public Const INDEXED As Integer = 3
-        Public Const GREYSCALE_ALPHA As Integer = 4
-        Public Const TRUECOLOR_ALPHA As Integer = 6
-    End Class
+    ''' <summary>
+    ''' Enumeration of png color types
+    ''' </summary>
+    Public Enum colorTypes
+        GREYSCALE = 0
+        TRUECOLOR = 2
+        INDEXED = 3
+        GREYSCALE_ALPHA = 4
+        TRUECOLOR_ALPHA = 6
+    End Enum
+
+    ''' <summary>
+    ''' Enumeration of png interlacing methods
+    ''' </summary>
+    Public Enum InterlacingMethods
+        None = 0
+        Adam7 = 1
+    End Enum
+
+    ''' <summary>
+    ''' Enumeration of png filtering methods
+    ''' </summary>
+    Public Enum FilterMethods
+        Dflt = 0
+    End Enum
+
+    ''' <summary>
+    ''' Enumeration of png compression methods
+    ''' </summary>
+    Public Enum CompressionMethods
+        Deflate = 0
+    End Enum
+
+    ''' <summary>
+    ''' Enumeration of png bitdepths
+    ''' </summary>
+    Public Enum BitDepths
+        OneBit = 1
+        TwoBits = 2
+        FourBits = 4
+        EightBits = 8
+        SixteenBits = 16
+    End Enum
 
     Friend Class InterlacingParameters
         Public Shared START_SCANLINE_INDEX As Integer() = {0, 0, 4, 0, 2, 0, 1}
@@ -31,60 +68,94 @@ Public Class PngImage
 #End Region
 
 #Region "Public Properties"
+    ''' <summary>
+    ''' Width of the image in pixels
+    ''' </summary>
     Public ReadOnly Property Width() As Long
         Get
             Return Scanlines(0).Pixels.Count
         End Get
     End Property
 
+    ''' <summary>
+    ''' Height of the image in pixels
+    ''' </summary>
     Public ReadOnly Property Height() As Long
         Get
             Return _ScanLines.Count
         End Get
     End Property
 
+    ''' <summary>
+    ''' Number of bits in a color or alpha sample
+    ''' </summary>
     Public ReadOnly Property BitDepth() As Integer
         Get
             Return _Header.BitDepth
         End Get
     End Property
 
+    ''' <summary>
+    ''' The color type of a pixel
+    ''' </summary>
     Public ReadOnly Property ColorType() As Integer
         Get
             Return _Header.ColorType
         End Get
     End Property
 
+    ''' <summary>
+    ''' The interlacing method to apply to image data
+    ''' </summary>
     Public ReadOnly Property InterlaceMethod() As Integer
         Get
             Return _Header.InterlaceMethod
         End Get
     End Property
 
+    ''' <summary>
+    ''' The filter method to apply to image data
+    ''' </summary>
     Public ReadOnly Property FilterMethod() As Integer
         Get
             Return _Header.FilterMethod
         End Get
     End Property
 
+    ''' <summary>
+    ''' The compression alogrithm to apply to image data
+    ''' </summary>
     Public ReadOnly Property CompressionMethod() As Integer
         Get
             Return _Header.CompressionMethod
         End Get
     End Property
 
+    ''' <summary>
+    ''' An indexed list of colors that appear on pixels in the scanlines.
+    ''' </summary>
     Public ReadOnly Property Palette() As PngPalette
         Get
             Return _Palette
         End Get
     End Property
 
+    ''' <summary>
+    ''' Ordered list of the scanlines that appear in the image.
+    ''' </summary>
     Public ReadOnly Property Scanlines() As PngScanline()
         Get
             Return _ScanLines.ToArray
         End Get
     End Property
 
+    ''' <summary>
+    ''' Ancillary chunks containing their binary data
+    ''' </summary>
+    ''' <remarks>
+    ''' All ancillary chunks that are not encapsulated in a png objects are kept as raw
+    ''' data in a PngChunk.
+    ''' </remarks>
     Public ReadOnly Property UnhandledChunks() As PngChunk()
         Get
             Return _UnhandledChunks.ToArray
@@ -93,21 +164,37 @@ Public Class PngImage
 #End Region
 
 #Region "Constructors"
+    ''' <summary>
+    ''' Instantiates a new PngImage
+    ''' </summary>
     Public Sub New()
 
     End Sub
 
+    ''' <summary>
+    ''' Instantiates a new PngImage
+    ''' </summary>
+    ''' <param name="header">
+    ''' Header for the new image
+    ''' </param>
+    ''' <param name="scanlines">
+    ''' image data for the new image
+    ''' </param>
+    ''' <param name="Palette">
+    ''' optional palette for the new image
+    ''' </param>
+    ''' <remarks></remarks>
     Public Sub New( _
         ByVal header As PngHeader, _
-        ByVal palette As PngPalette, _
-        ByVal scanlines As List(Of PngScanline) _
+        ByVal scanlines As List(Of PngScanline), _
+        Optional ByVal Palette As PngPalette = Nothing _
     )
         _Header = header
-        _Palette = palette
         _ScanLines = scanlines
+        _Palette = Palette
     End Sub
 
-    Public Sub New( _
+    Friend Sub New( _
         ByVal chunks As List(Of PngChunk) _
     )
         Dim idatProcessed As Boolean = False
@@ -123,22 +210,7 @@ Public Class PngImage
 
                 Case PngChunk.ChunkNames.IDAT
                     If idatProcessed = False Then
-                        Dim dataStream As New MemoryStream
-                        For Each datChunk As PngChunk In chunks
-                            If datChunk.Name = PngChunk.ChunkNames.IDAT Then
-                                Dim buffer(4096) As Byte
-                                Dim numberRead As Integer = datChunk.Data.Read(buffer, 0, 4096)
-
-                                Do While numberRead > 0
-                                    dataStream.Write(buffer, 0, numberRead)
-                                    numberRead = datChunk.Data.Read(buffer, 0, 4096)
-                                Loop
-
-                                datChunk.Data.Close()
-                            End If
-                        Next
-
-                        Dim uncompressedData = zStreamReader.ReadStream(dataStream)
+                        Dim uncompressedData = zStreamReader.ReadStream(readIDATs(chunks))
 
                         uncompressedData.Seek(0, SeekOrigin.Begin)
 
@@ -173,8 +245,8 @@ Public Class PngImage
         If transparentColor Is Nothing = False Then
             For Each scanline As PngScanline In _ScanLines
                 For Each pixel As PngPixel In scanline.Pixels
-                    If PngColor.compare(pixel.Color, transparentColor) Then
-                        Select _Header.BitDepth
+                    If PngColor.Compare(pixel.Color, transparentColor) Then
+                        Select Case _Header.BitDepth
                             Case 1, 2, 4, 8
                                 pixel.Color.setAlpha(New Byte() {0})
                             Case 16
@@ -193,13 +265,29 @@ Public Class PngImage
     End Sub
 #End Region
 
-#Region "Public Methods"
-    Public Sub SetHeader(ByVal header As PngHeader)
-        _Header = header
-    End Sub
-#End Region
-
 #Region "Private Methods"
+    Private Function readIDATs(ByVal chunks As List(Of PngChunk)) As MemoryStream
+        Dim dataStream As New MemoryStream
+
+        For Each datChunk As PngChunk In chunks
+            If datChunk.Name = PngChunk.ChunkNames.IDAT Then
+                Dim buffer(4096) As Byte
+                Dim numberRead As Integer = datChunk.Data.Read(buffer, _
+                                                               0, _
+                                                               4096)
+
+                Do While numberRead > 0
+                    dataStream.Write(buffer, 0, numberRead)
+                    numberRead = datChunk.Data.Read(buffer, 0, 4096)
+                Loop
+
+                datChunk.Data.Close()
+            End If
+        Next
+
+        Return dataStream
+    End Function
+
     Private Function readScanlines( _
         ByVal dataStream As MemoryStream, _
         ByVal width As Long, _
@@ -227,7 +315,6 @@ Public Class PngImage
                                                   width))
 
             previousScanlineBytes = scanLineBytes
-            mScanlineBytes.Add(scanLineBytes)
         Next
 
         Return scanlines
@@ -239,7 +326,7 @@ Public Class PngImage
         ByVal colorType As Integer, _
         ByVal imageWidth As Long _
     ) As PngScanline
-        Dim filter() As Byte = scanlineBytes(0) 'New Byte() {0} 
+        Dim filter As Byte = scanlineBytes(0)(0)
         Dim pixels As New List(Of PngPixel)
         Dim numberOfPixelsWritten As Integer = 0
 
@@ -260,7 +347,7 @@ Public Class PngImage
             End Select
         Next
 
-        Return New PngScanline(filter, pixels)
+        Return New PngScanline(CType(filter, PngScanline.FilterTypes), pixels)
     End Function
 
     Private Function createPngPixelsFromBits( _
@@ -500,7 +587,7 @@ Public Class PngImage
                 Dim paletteIndex As Integer = 0
 
                 Do Until numberRead = 0
-                    _Palette.setEntryAlpha(paletteIndex, transparenecyBuffer)
+                    _Palette.Entries(paletteIndex).setAlpha(transparenecyBuffer)
                     transparenecyBuffer = New Byte(0) {}
                     numberRead = chunk.Data.Read(transparenecyBuffer, 0, 1)
                     paletteIndex += 1
@@ -625,7 +712,7 @@ Public Class PngImage
         _ScanLines = New List(Of PngScanline)
 
         For scanlineIndex As Long = 0 To imageHeight - 1
-            Dim filter() As Byte = {0}
+            Dim filter As PngScanline.FilterTypes = PngScanline.FilterTypes.NoFilter
             Dim pixels As New List(Of PngPixel)
 
             For pixelIndex As Long = 0 To imageWidth - 1

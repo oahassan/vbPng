@@ -4,10 +4,24 @@ Option Explicit On
 Imports System.IO
 Imports vbPng.PngLibUtil
 
+''' <summary>
+''' Reads PngImages from PngFiles
+''' </summary>
 Public Class PngReader
     Private Shared pngSignature() As Integer = {137, 80, 78, 71, 13, 10, 26, 10}
 
-    Public Shared Function ReadPng(ByVal pngStream As FileStream) As PngImage
+    ''' <summary>
+    ''' Creates a PngImage from a file
+    ''' </summary>
+    ''' <param name="filePath">
+    ''' Path to png image
+    ''' </param>
+    ''' <returns>
+    ''' A new PngImage for the png at the given path
+    ''' </returns>
+    Public Shared Function ReadPng(ByVal filePath As String) As PngImage
+        Dim pngStream As New FileStream(filePath, FileMode.Open)
+
         Dim signature(7) As Byte
         pngStream.Read(signature, 0, 8)
 
@@ -45,7 +59,7 @@ Public Class PngReader
         Return indicator
     End Function
 
-    Public Shared Function readChunk(ByVal pngStream As FileStream) As PngChunk
+    Private Shared Function readChunk(ByVal pngStream As FileStream) As PngChunk
 
         Dim lengthBytes(3) As Byte
         pngStream.Read(lengthBytes, 0, 4)
